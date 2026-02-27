@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio Online - Lufekelo Delivery</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.1.6/vibrant.min.js"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="theme-color" content="#e31b1b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script>
+      // Suas chaves de conexão (Configuradas globalmente)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCuUorImhFAg7DvByggkdmOIZFmpD2LsvI",
+        authDomain: "cardapiodigital-b41bc.firebaseapp.com",
+        projectId: "cardapiodigital-b41bc",
+        storageBucket: "cardapiodigital-b41bc.firebasestorage.app",
+        messagingSenderId: "23027010501",
+        appId: "1:23027010501:web:75c9e86faa04de4f50d9ac"
+      };
+
+      // Inicializando o Firebase antes de carregar o Cart.js
+      if (typeof firebase !== 'undefined') {
+          firebase.initializeApp(firebaseConfig);
+          window.db = firebase.firestore();
+          console.log("🔥 Firebase conectado!");
+      }
+    </script>
+</head>
+<body>
+
+    <header class="header">
+        <div id="header-bg"></div>
+        <img id="logo" class="logo" alt="Logo da Loja" crossorigin="anonymous">
+        <h1 id="store-name">Carregando...</h1>
+        <div id="loja-status-msg" class="status-loja"></div>
+        <div id="category-menu" class="category-slider"></div>
+    </header>
+
+    <main id="products" class="products"></main>
+
+    <button class="cart-float hidden" onclick="Cart.toggle()">
+        <span id="cart-count">0</span>
+        <i class="fa fa-shopping-cart"></i> 
+        Ver Carrinho  
+        <span id="cart-total-float">R$ 0,00</span>
+    </button>
+
+    <div id="cart-modal" class="cart-modal hidden">
+        <div class="cart-content"> 
+            <h2>Seu Pedido</h2>
+            <button onclick="Cart.clear()" class="btn-clear-cart" style="width: 100%; margin-bottom: 15px; padding: 10px; background: #fff1f1; color: #d9534f; border: 1px solid #d9534f; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                🗑️ Limpar Carrinho
+            </button>
+            <div id="cart-items"></div>
+            <div id="min-order-info"></div>
+            <div class="cart-total" style="padding: 15px 0; font-size: 1.2rem; border-top: 1px solid #eee; margin-top: 10px; color: #333;">
+                Total: <span id="cart-total"><strong>R$ 0,00</strong></span>
+            </div>
+            <button id="btn-finalizar-cart" onclick="Cart.checkout()" class="btn-primary">Finalizar Pedido</button>
+            <button onclick="Cart.toggle()" class="btn-secondary" style="margin-top: 10px;">Fechar</button>
+        </div>
+    </div>
+
+    <div id="checkout-modal" class="checkout-modal hidden">
+        <div class="checkout-content"> 
+    <h2 id="saudacao-usuario">Finalizar Pedido</h2>
+    
+    <div class="form-group">
+        <label>Seu Nome</label>
+        <input id="cliente-nome" placeholder="Ex: João Silva">
+    </div>
+
+    <div class="row-form" style="display: flex; gap: 10px;">
+        <div class="form-group" style="flex: 3;">
+            <label>Rua e Número</label>
+            <input id="cliente-endereco" placeholder="Ex: Rua Senador Lemos, 100">
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label>CEP</label>
+            <input id="cliente-cep" placeholder="68740-000">
+        </div>
+    </div>
+
+    <div class="form-group" style="position: relative;">
+        <label>Seu Bairro</label>
+        <input type="text" id="cliente-bairro" placeholder="Digite seu bairro..." autocomplete="off" oninput="Cart.sugerirBairros(this.value)">
+        <div id="lista-sugestoes" class="sugestoes-box hidden"></div>
+        <small id="taxa-status" style="margin-top: 5px; display: block; font-size: 0.8rem; font-weight: bold;"></small>
+    </div>
+
+    <div class="form-group">
+        <label>Ponto de Referência (Importante)</label>
+        <input id="cliente-referencia" placeholder="Ex: Próximo ao Posto São José">
+    </div>
+
+    <div class="form-group">
+        <label>Forma de Pagamento</label>
+        <select id="pagamento" onchange="Cart.ajustarPagamento(this.value)">
+            <option value="Pix">Pix</option>
+            <option value="Cartão">Cartão (levar maquininha)</option>
+            <option value="Dinheiro">Dinheiro</option>
+        </select>
+    </div>
+
+    <div id="area-pix" class="hidden" style="background: #e7f3ef; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #c3e6cb;">
+        <p><strong>Chave Pix:</strong> <span id="chave-pix-valor">...</span></p>
+        <p>Favorecido: <strong id="favorecido-pix">...</strong></p>
+        <button type="button" onclick="Cart.copiarPix()" style="background: #25d366; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; width: 100%;">📋 Copiar Chave</button>
+    </div>
+
+    <div id="area-troco" class="hidden" style="background: #fdf6e7; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ffeeba;">
+        <label>Precisa de troco?</label>
+        <input type="text" id="valor-troco" placeholder="Troco para quanto?" style="width: 100%; padding: 10px;">
+    </div>
+
+    <div class="form-group">
+        <label>Observações (Opcional)</label>
+        <textarea id="cliente-obs" placeholder="Ex: Sem cebola..."></textarea>
+    </div>
+
+    <button id="btn-enviar-whatsapp" onclick="Cart.enviarPedido()" class="btn-primary">🚀 Enviar Pedido</button>
+    <button type="button" onclick="Cart.closeCheckout()" class="btn-secondary" style="margin-top: 15px;">Voltar</button>
+</div>
+
+            
+
+    <div id="modal-pix-lembrete" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; justify-content:center; align-items:center; padding:20px;">
+        <div style="background:#fff; padding:30px; border-radius:20px; text-align:center; max-width:350px; width:100%;">
+            <h2>Pedido Enviado! 🏁</h2>
+            <p id="msg-pix-dinamica"></p>
+            <button onclick="location.reload()" style="background:#0aca51; color:#fff; border:none; width:100%; padding:15px; border-radius:12px; font-weight:bold; cursor:pointer;">OK, ENTENDI!</button>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/main.js"></script>
+
+    <div class="footer-marca">
+        <span>Cardápio Digital by <strong>As Gama</strong></span>
+        <a href="https://wa.me/5591992875156" target="_blank">📲</a>
+    </div>
+
+</body>
+</html>
